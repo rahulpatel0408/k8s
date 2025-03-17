@@ -122,6 +122,55 @@ spec:
 
 ```
 ### StatefulSet
+
 ### Jobs
+A Job runs a task once and stops.
+```yaml
+kind: Job
+apiVersion: batch/v1
+metadata:
+  name: demo-job
+spec:
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      name: job-pod
+      labels:
+        app: job
+    spec:
+      containers:
+        -name: batch-container
+          image: busybox
+          command: ["echo", "Hello K8s!"]
+      restartPolicy: Never  #important to mention that it should terminate once completed
+```
 ### CronJobs
+A CronJob runs a Job on a schedule.
+```yaml
+kind: CronJob
+apiVersion: batch/v1
+metadata:
+  name: demo-job
+spec:
+  schedule: "/2 * * * *" #every 2 minute 
+  template:
+    metadata:
+      name: job-pod
+      labels:
+        app: job
+    spec:
+      containers:
+        -name: batch-container
+          image: busybox
+          command:
+          - sh
+          - -c
+          - >
+            echo "hello k8s!";
+      restartPolicy: Never  #can also use onFailure
+```
+
+`>` use this to write commands without using list 
+
 
