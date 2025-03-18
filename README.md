@@ -173,4 +173,54 @@ spec:
 
 `>` use this to write commands without using list 
 
+---
+
+## Storage
+In kubernetes every container has its own temproray storage and it remains persistant as long as pod is running. 
+
+Types:
+- `Ephemeral Storage` (temporary, lost when Pod restarts)
+- `Persistent Storage` (data survives Pod restarts)
+  
+### Ephemeral Storage
+Ephemeral storage is tied to the lifecycle of a Pod. When the Pod is deleted, the storage is also lost.
+
+- **emptyDir**:
+ since every container has isolated storage we can create a shared storage volume for pods that is still temproray but allows data sharing between containers.
+example:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: shared-volume-pod
+spec:
+  volumes:
+    - name: shared-storage
+      emptyDir: {}  # Creates a shared directory
+  containers:
+    - name: writer
+      image: busybox
+      volumeMounts:
+        - mountPath: /data
+          name: shared-storage
+      command: ["/bin/sh", "-c", "echo 'Shared Data' > /data/file.txt && sleep 3600"]
+
+    - name: reader
+      image: busybox
+      volumeMounts:
+        - mountPath: /data
+          name: shared-storage
+      command: ["/bin/sh", "-c", "cat /data/file.txt && sleep 3600"]
+
+```
+
+- **configMap**:
+  A ConfigMap is used to store non-sensitive configuration data in key-value pairs. It allows you to decouple configuration from application code, making it easier to manage and modify configurations without **rebuilding container images**.
+   
+
+
+
+
+
+
 
