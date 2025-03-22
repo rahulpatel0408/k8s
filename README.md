@@ -215,8 +215,156 @@ spec:
 ```
 
 - **configMap**:
-  A ConfigMap is used to store non-sensitive configuration data in key-value pairs. It allows you to decouple configuration from application code, making it easier to manage and modify configurations without **rebuilding container images**.
-   
+  - A ConfigMap is used to store non-sensitive configuration data in key-value pairs. ConfigMap allows us to inject configuration values into Pods dynamically **without modifying the container image**. 
+  - Is specific to a namespace.
+  - Can be used in environment variables, command-line arguments, or mounted as files inside a pod.
+    ### Creating ConfigMap:
+    - using Yaml
+    ```yaml
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: my-config
+      namespace: My-namespace #evry pod in this namespace can access it.
+    data:
+      APP_ENV: "production"
+      LOG_LEVEL: "info"
+
+    ```
+    - using kubectl:
+      
+      `kubectl create configmap my-config --from-literal=database_url="postgres://db.example.com:5432" --from-literal=log_level="debug"`
+      `kubectl get configmap my-config `
+    - using a file:
+      - env file:
+        **cmd**: `kubectl create configmap my-config --from-env-file=config.properties`
+        every line becomes a key value pair.
+
+      - file:
+        **cmd**: `kubectl create configmap my-config --from-file=config.properties`
+        file name-> key | file-content->value
+      
+    ### Use:
+    - **As env variables**:
+      use `valueFrom` and `configMapKeyRef`.
+      ```yaml
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: env-configmap-pod
+      spec:
+        containers:
+          - name: my-app
+            image: busybox
+            env:
+              - name: DATABASE_URL
+                valueFrom:
+                  configMapKeyRef:
+                    name: my-config
+                    key: database_url
+              - name: LOG_LEVEL
+                valueFrom:
+                  configMapKeyRef:
+                    name: my-config
+                    key: log_level
+            command: ["sh", "-c", "echo $DATABASE_URL && echo $LOG_LEVEL && sleep 3600"]
+
+      ```
+
+    - **As Command Arguments**:
+      same as env variable but with extra steps.
+      ```yaml
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: my-app
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: my-app
+        template:
+          metadata:
+            labels:
+              app: my-app
+          spec:
+            containers:
+              - name: my-container
+                image: my-app-image:latest
+                command: ["my-app"]  # Command to run
+                args:
+                  - "--log-level=$(LOG_LEVEL)"
+                  - "--max-connections=$(MAX_CONNECTIONS)"
+                env:
+                  - name: LOG_LEVEL
+                    valueFrom:
+                      configMapKeyRef:
+                        name: my-config
+                        key: log-level
+                  - name: MAX_CONNECTIONS
+                    valueFrom:
+                      configMapKeyRef:
+                        name: my-config
+                        key: max-connections
+      ```
+      
+    - **As Volume**
+      creates a file for each key and saves its value as content.
+      ```yaml
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: volume-configmap-pod
+      spec:
+        volumes:
+          - name: config-volume
+            configMap:
+              name: my-config
+        containers:
+          - name: my-app
+            image: busybox
+            volumeMounts:
+              - mountPath: /config
+                name: config-volume
+            command: ["sh", "-c", "ls -l /config && cat /config/database_url && sleep 3600"]
+
+
+      ```
+- **secret**:
+  Secrets are used to store and manage sensitive data securely, such as passwords, API keys, SSH keys, or TLS certificates. Unlike ConfigMaps, Secrets are base64-encoded and not exposed directly in plaintext.
+
+  Types:
+  - `Opaque (Default)` – Stores arbitrary key-value pairs.
+  - `TLS Secret` – Stores TLS certificates and private keys.
+  - `Docker Registry Secret` – Stores Docker authentication credentials.
+  - `Basic Authentication Secret` – Stores username/password pairs.
+  - `SSH Key Secret` – Stores SSH private/public keys.
+  - `Service Account Token Secret` – Stores Kubernetes API tokens for service accounts.
+ ```yaml
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: my-secret
+  type: Opaque
+  data:
+    username: dXNlcm5hbWU=  # base64("username")
+    password: cGFzc3dvcmQ=  # base64("password")
+  ```
+
+ **cmd**: `kubectl create secret generic my-secret --from-literal=username=username --from-literal=password=password`
+
+ similar to configMap, it can be used as env variable, function arguments and volume.
+
+### Persistant Storage
+- **Persistant Volume:**
+A PV is a piece of storage in the cluster that has been provisioned by an administrator or dynamically created using a StorageClass. It represents actual storage that exists on a node or in external storage systems. It is simply a promise that certain storage will be made available once the claim is made.
+
+- `Static Provisioning or Dynamic Provisioning`: whether to specify storage or let k8s automatically decide.
+- `local (node-specific) or external (NFS, AWS EBS, etc.)`: hostPath or NFS(or others)
+- `capacity, access modes, and reclaim policy`
+
+
+    
 
 
 
